@@ -1,6 +1,6 @@
 import streamlit as st
 import dateparser
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Beautiful background style
 st.markdown("""
@@ -41,8 +41,14 @@ if st.button("Send"):
         # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content": user_input})
 
-        # Parse the date from user input
+        # Try to parse the full date and time
         parsed_date = dateparser.parse(user_input, settings={'PREFER_DATES_FROM': 'future'})
+
+        # Handle time-only input (like "at 3pm")
+        if parsed_date is None:
+            # Try adding "tomorrow" to the input
+            assumed_input = "tomorrow " + user_input
+            parsed_date = dateparser.parse(assumed_input, settings={'PREFER_DATES_FROM': 'future'})
 
         if parsed_date:
             if parsed_date > datetime.now():
