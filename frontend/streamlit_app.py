@@ -1,76 +1,70 @@
 import streamlit as st
-import requests
-import datetime
+import dateparser
 import json
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-import dateparser
+import re
+from datetime import timedelta
 
-# Streamlit UI
-st.markdown("""
-    <style>
-    .stApp {
-        background: linear-gradient(to right, #74ebd5, #ACB6E5);
-        background-attachment: fixed;
-        color: #333333;
-    }
-    .stButton>button {
-        background-color: #4CAF50;
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 16px;
-    }
-    .stButton>button:hover {
-        background-color: #45a049;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# Clean user input
+def clean_input(user_input):
+    cleaned = re.sub(r'\b(please|schedule|book|appointment|meeting|at)\b', '', user_input, flags=re.IGNORECASE)
+    return cleaned.strip()
 
-st.title("🗓️ Calendar Booking Chatbot")
-st.write("Welcome! Please type your request to book an appointment.")
+# Parse date
+def parse_appointment_time(user_input):
+    settings = {
+        'PREFER_DATES_FROM': 'future',
+        'RETURN_AS_TIMEZONE_AWARE': False,
+        'DATE_ORDER': 'DMY'
+    }
+    appointment_time = dateparser.parse(user_input, settings=settings)
+    return appointment_time
 
-# Authenticate Google
+# Google Calendar Auth
 def authenticate_google():
     creds_dict = json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT"])
-    creds = service_account.Credentials.from_service_account_info(creds_dict, scopes=["https://www.googleapis.com/auth/calendar"])
+    creds = service_account.Credentials.from_service_account_info(
+        creds_dict, scopes=["https://www.googleapis.com/auth/calendar"]
+    )
     return creds
 
-# Add event to Google Calendar
+# Add event to calendar
 def add_event_to_calendar(summary, start_time, end_time):
     creds = authenticate_google()
-    service = build("calendar", "v3", credentials=creds)
-
+    service = build('calendar', 'v3', credentials=creds)
     event = {
         'summary': summary,
         'start': {'dateTime': start_time.isoformat(), 'timeZone': 'Asia/Kolkata'},
-        'end': {'dateTime': end_time.isoformat(), 'timeZone': 'Asia/Kolkata'},
+        'end': {'dateTime': end_time.isoformat(), 'timeZone': 'Asia/Kolkata'}
     }
+    event = service.events().insert(calendarId='primary', body=event).execute()
+    return event.get('htmlLink')
 
-    calendar_id = 'primary'
-    event_result = service.events().insert(calendarId=calendar_id, body=event).execute()
+# Streamlit UI
+st.title("🗓️ Calendar Booking Chatbot")
+st.write("Welcome! Please type your request to book an appointment.")
 
-    return event_result.get('htmlLink')
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-# Input processing
-user_input = st.text_input("Your message:")
+user_input = st.chat_input("Your message:")
 
-if st.button("Send"):
-    if user_input.strip() != "":
-        parsed_date = dateparser.parse(user_input, settings={'PREFER_DATES_FROM': 'future'})
-        if parsed_date:
-            appointment_time = parsed_date
-            appointment_end_time = appointment_time + datetime.timedelta(hours=1)
+if user_input:
+    st.session_state.messages.append({"role": "user", "content": user_input})
 
-            try:
-                event_link = add_event_to_calendar('Booked Appointment', appointment_time, appointment_end_time)
-                st.write(f"✅ Your appointment has been booked for: {appointment_time.strftime('%A, %d %B %Y at %I:%M %p')}")
-                st.write(f"📅 [View your event here]({event_link})")
-            except Exception as e:
-                st.write("⚠️ Google Calendar Error:", str(e))
-        else:
-            st.write("❌ Sorry, I couldn't understand the date. Please try again with more details.")
+    cleaned_input = clean_input(user_input)
+    appointment_time = parse_appointment_time(cleaned_input)
+
+    if appointment_time:
+        appointment_end_time = appointment_time + timedelta(hours=1)
+        event_link = add_event_to_calendar('Booked Appointment', appointment_time, appointment_end_time)
+        bot_response = f"✅ Your appointment has been booked for: {appointment_time.strftime('%A, %d %B %Y at %I:%M %p')} \n\n[View in Calendar]({event_link})"
     else:
-        st.write("Please enter a message to book an appointment.")
+        bot_response = "❌ Sorry, I couldn't understand the date. Please try again with more details."
+
+    st.session_state.messages.append({"role": "assistant", "content": bot_response})
+
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
