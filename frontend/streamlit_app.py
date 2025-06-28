@@ -5,8 +5,29 @@ import json
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-# Streamlit UI
-st.title("🗓️ Calendar Booking Chatbot")
+# Add moving robot background using a GIF
+st.markdown("""
+    <style>
+    .stApp {
+        background: url('https://i.gifer.com/7efs.gif'); /* Replace with your robot gif */
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+    }
+    .stChatMessage {
+        background-color: rgba(255, 255, 255, 0.8);
+        padding: 10px;
+        border-radius: 10px;
+        margin: 5px 0;
+    }
+    .stTextInput>div>div>input {
+        background-color: white;
+        color: black;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("🤖🗓️ Calendar Booking Chatbot")
 st.write("Welcome! Please type your request to book an appointment.")
 
 # Load Google Credentials from Streamlit secrets
