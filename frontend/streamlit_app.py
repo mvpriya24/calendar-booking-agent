@@ -1,5 +1,4 @@
 import streamlit as st
-import parsedatetime as pdt
 from datetime import datetime, timedelta
 
 # Beautiful background style
@@ -36,27 +35,50 @@ if "messages" not in st.session_state:
 # User input
 user_input = st.text_input("Your message:")
 
+def simple_parser(message):
+    message = message.lower()
+    now = datetime.now()
+
+    # Example: "book an appointment tomorrow at 3pm"
+    if "tomorrow" in message:
+        if "at" in message:
+            try:
+                time_part = message.split("at")[1].strip()
+                appointment_time = datetime.strptime(time_part, "%I%p")  # Example: 3pm
+                appointment_date = now + timedelta(days=1)
+                final_datetime = appointment_date.replace(hour=appointment_time.hour, minute=0, second=0, microsecond=0)
+                return final_datetime
+            except:
+                return None
+
+    # Example: "book an appointment at 3pm" → assume tomorrow
+    if "at" in message:
+        try:
+            time_part = message.split("at")[1].strip()
+            appointment_time = datetime.strptime(time_part, "%I%p")
+            appointment_date = now + timedelta(days=1)
+            final_datetime = appointment_date.replace(hour=appointment_time.hour, minute=0, second=0, microsecond=0)
+            return final_datetime
+        except:
+            return None
+
+    return None
+
 if st.button("Send"):
     if user_input.strip() != "":
-        # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content": user_input})
 
-        # Setup parsedatetime
-        cal = pdt.Calendar()
-        time_struct, parse_status = cal.parse(user_input)
+        parsed_date = simple_parser(user_input)
 
-        if parse_status == 1:
-            parsed_date = datetime(*time_struct[:6])
-
+        if parsed_date:
             if parsed_date > datetime.now():
                 formatted_date = parsed_date.strftime('%A, %d %B %Y at %I:%M %p')
                 bot_response = f"✅ Your appointment has been booked for: {formatted_date}"
             else:
                 bot_response = "❌ Please provide a future date and time."
         else:
-            bot_response = "❌ Sorry, I couldn't understand the date. Please try again with more details."
+            bot_response = "❌ Sorry, I couldn't understand the date. Please use 'at [time]' or 'tomorrow at [time]'."
 
-        # Add bot response to chat history
         st.session_state.messages.append({"role": "assistant", "content": bot_response})
 
     else:
