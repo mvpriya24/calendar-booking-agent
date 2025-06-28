@@ -5,14 +5,14 @@ import json
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-# Add moving robot background using a GIF
+# Add pastel color gradient background
 st.markdown("""
     <style>
     .stApp {
-        background: url('https://i.gifer.com/7efs.gif'); /* Replace with your robot gif */
-        background-size: cover;
-        background-repeat: no-repeat;
+        background: linear-gradient(to right, #fbd3e9, #bbded6, #e0c3fc);
         background-attachment: fixed;
+        background-size: cover;
+        color: #333333;
     }
     .stChatMessage {
         background-color: rgba(255, 255, 255, 0.8);
@@ -23,6 +23,18 @@ st.markdown("""
     .stTextInput>div>div>input {
         background-color: white;
         color: black;
+    }
+    .stButton>button {
+        background-color: #ffb6b9;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+    .stButton>button:hover {
+        background-color: #f67280;
     }
     </style>
 """, unsafe_allow_html=True)
