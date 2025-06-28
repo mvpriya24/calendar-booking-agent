@@ -1,6 +1,6 @@
 import streamlit as st
 from datetime import timedelta
-import dateparser
+import dateparser.search
 import json
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -9,7 +9,7 @@ from googleapiclient.discovery import build
 st.title("🗓️ Calendar Booking Chatbot")
 st.write("Welcome! Please type your request to book an appointment.")
 
-# Load Google Credentials
+# Load Google Credentials from Streamlit secrets
 creds_dict = json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT"])
 
 def authenticate_google():
@@ -41,10 +41,11 @@ if st.button("Send"):
     if user_input.strip() != "":
         st.session_state.messages.append({"role": "user", "content": user_input})
 
-        # Parse date
-        appointment_time = dateparser.parse(user_input, settings={'PREFER_DATES_FROM': 'future'})
+        # Search for date in the sentence
+        result = dateparser.search.search_dates(user_input, settings={'PREFER_DATES_FROM': 'future'})
 
-        if appointment_time:
+        if result:
+            appointment_time = result[0][1]  # Take the first detected date
             appointment_end_time = appointment_time + timedelta(hours=1)
             event_link = add_event_to_calendar('Booked Appointment', appointment_time, appointment_end_time)
             bot_response = f"✅ Your appointment has been booked for: {appointment_time.strftime('%A, %d %B %Y at %I:%M %p')}\n[View in Google Calendar]({event_link})"
