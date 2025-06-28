@@ -1,6 +1,6 @@
 import streamlit as st
-import dateparser
-from datetime import datetime
+import parsedatetime as pdt
+from datetime import datetime, timedelta
 
 # Beautiful background style
 st.markdown("""
@@ -41,29 +41,13 @@ if st.button("Send"):
         # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content": user_input})
 
-        # Parse the date from user input with strong settings
-        parsed_date = dateparser.parse(
-            user_input,
-            settings={
-                'PREFER_DATES_FROM': 'future',
-                'RELATIVE_BASE': datetime.now(),
-                'PARSERS': ['relative-time', 'absolute-time', 'custom-formats']
-            }
-        )
+        # Setup parsedatetime
+        cal = pdt.Calendar()
+        time_struct, parse_status = cal.parse(user_input)
 
-        # Try to fix cases where only time is given by assuming "tomorrow"
-        if parsed_date is None:
-            assumed_input = "tomorrow " + user_input
-            parsed_date = dateparser.parse(
-                assumed_input,
-                settings={
-                    'PREFER_DATES_FROM': 'future',
-                    'RELATIVE_BASE': datetime.now(),
-                    'PARSERS': ['relative-time', 'absolute-time', 'custom-formats']
-                }
-            )
+        if parse_status == 1:
+            parsed_date = datetime(*time_struct[:6])
 
-        if parsed_date:
             if parsed_date > datetime.now():
                 formatted_date = parsed_date.strftime('%A, %d %B %Y at %I:%M %p')
                 bot_response = f"✅ Your appointment has been booked for: {formatted_date}"
