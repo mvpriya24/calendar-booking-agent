@@ -6,12 +6,10 @@ from googleapiclient.discovery import build
 import re
 from datetime import timedelta
 
-# Clean user input to remove confusing words
 def clean_input(user_input):
     cleaned = re.sub(r'\b(please|schedule|book|appointment|meeting)\b', '', user_input, flags=re.IGNORECASE)
     return cleaned.strip()
 
-# Parse date robustly
 def parse_appointment_time(user_input):
     settings = {
         'PREFER_DATES_FROM': 'future',
@@ -20,9 +18,7 @@ def parse_appointment_time(user_input):
     }
     appointment_time = dateparser.parse(user_input, settings=settings)
 
-    # Try alternate input order if failed
     if not appointment_time:
-        # Example: try to rearrange "at 3pm june 5th" to "june 5th at 3pm"
         match = re.search(r'at (\d{1,2}(?:am|pm)) (.+)', user_input, re.IGNORECASE)
         if match:
             new_input = f"{match.group(2)} at {match.group(1)}"
@@ -30,7 +26,6 @@ def parse_appointment_time(user_input):
 
     return appointment_time
 
-# Google Authentication
 def authenticate_google():
     creds_dict = json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT"])
     creds = service_account.Credentials.from_service_account_info(
@@ -38,7 +33,6 @@ def authenticate_google():
     )
     return creds
 
-# Add event to Google Calendar
 def add_event_to_calendar(summary, start_time, end_time):
     creds = authenticate_google()
     service = build('calendar', 'v3', credentials=creds)
@@ -50,7 +44,6 @@ def add_event_to_calendar(summary, start_time, end_time):
     event = service.events().insert(calendarId='primary', body=event).execute()
     return event.get('htmlLink')
 
-# Streamlit UI
 st.title("🗓️ Calendar Booking Chatbot")
 st.write("Welcome! Please type your request to book an appointment.")
 
