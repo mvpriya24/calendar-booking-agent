@@ -6,12 +6,12 @@ from googleapiclient.discovery import build
 import re
 from datetime import timedelta
 
-# Clean user input
+# Clean user input to remove confusing words
 def clean_input(user_input):
-    cleaned = re.sub(r'\b(please|schedule|book|appointment|meeting|at)\b', '', user_input, flags=re.IGNORECASE)
+    cleaned = re.sub(r'\b(please|schedule|book|appointment|meeting)\b', '', user_input, flags=re.IGNORECASE)
     return cleaned.strip()
 
-# Parse date
+# Parse date robustly
 def parse_appointment_time(user_input):
     settings = {
         'PREFER_DATES_FROM': 'future',
@@ -19,9 +19,18 @@ def parse_appointment_time(user_input):
         'DATE_ORDER': 'DMY'
     }
     appointment_time = dateparser.parse(user_input, settings=settings)
+
+    # Try alternate input order if failed
+    if not appointment_time:
+        # Example: try to rearrange "at 3pm june 5th" to "june 5th at 3pm"
+        match = re.search(r'at (\d{1,2}(?:am|pm)) (.+)', user_input, re.IGNORECASE)
+        if match:
+            new_input = f"{match.group(2)} at {match.group(1)}"
+            appointment_time = dateparser.parse(new_input, settings=settings)
+
     return appointment_time
 
-# Google Calendar Auth
+# Google Authentication
 def authenticate_google():
     creds_dict = json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT"])
     creds = service_account.Credentials.from_service_account_info(
@@ -29,7 +38,7 @@ def authenticate_google():
     )
     return creds
 
-# Add event to calendar
+# Add event to Google Calendar
 def add_event_to_calendar(summary, start_time, end_time):
     creds = authenticate_google()
     service = build('calendar', 'v3', credentials=creds)
@@ -59,9 +68,9 @@ if user_input:
     if appointment_time:
         appointment_end_time = appointment_time + timedelta(hours=1)
         event_link = add_event_to_calendar('Booked Appointment', appointment_time, appointment_end_time)
-        bot_response = f"✅ Your appointment has been booked for: {appointment_time.strftime('%A, %d %B %Y at %I:%M %p')} \n\n[View in Calendar]({event_link})"
+        bot_response = f"✅ Your appointment has been booked for: {appointment_time.strftime('%A, %d %B %Y at %I:%M %p')} \n\n📅 [View in Calendar]({event_link})"
     else:
-        bot_response = "❌ Sorry, I couldn't understand the date. Please try again with more details."
+        bot_response = "❌ Sorry, I couldn't understand the date. Please try again with a clear format like 'June 5th at 3pm'."
 
     st.session_state.messages.append({"role": "assistant", "content": bot_response})
 
